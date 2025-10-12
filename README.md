@@ -3,98 +3,71 @@
 ![CI/CD Pipeline](https://github.com/madebygps/second-brain-ocr/actions/workflows/ci-cd.yml/badge.svg)
 [![codecov](https://codecov.io/gh/madebygps/second-brain-ocr/branch/main/graph/badge.svg)](https://codecov.io/gh/madebygps/second-brain-ocr)
 
-Automated OCR and semantic search for your second brain notes. Captures text from images, generates embeddings, and enables intelligent search across your knowledge base.
+Automated OCR and semantic search for your second brain notes. Watches directories for images, extracts text with Azure Document Intelligence, generates embeddings with Azure OpenAI, and indexes in Azure AI Search for semantic retrieval.
 
 ## Features
 
-- **Automated Processing**: Watches directories for new images, extracts text via OCR, generates embeddings, and indexes for search
-- **Semantic Search**: Query your notes using natural language with vector similarity search
-- **State Management**: Tracks processed files to avoid reprocessing
-- **Docker-First**: Containerized for deployment on Synology NAS, Portainer, or any Docker host
-- **Nextcloud Integration**: Works seamlessly with Nextcloud-synced photo uploads
+- Automated file watching with event-based monitoring and polling fallback
+- OCR text extraction from images and PDFs
+- Vector embeddings for semantic search
+- State management to prevent reprocessing
+- Docker-first deployment for Synology NAS or any Docker host
+- CI/CD pipeline with automated testing and ACR deployment
+
+## Prerequisites
+
+Azure resources required:
+- **Azure Document Intelligence** - OCR service
+- **Azure OpenAI** - Embedding model deployment (text-embedding-3-large or text-embedding-ada-002)
+- **Azure AI Search** - Free tier supports ~2,500 documents
 
 ## Quick Start
 
-### Prerequisites
-
-Create these Azure resources ([detailed setup guide](docs/AZURE_SETUP.md)):
-- Azure Document Intelligence
-- Azure OpenAI (with text-embedding deployment)
-- Azure AI Search (free tier works for ~2,500 documents)
-
 ### Docker Deployment
 
-1. **Clone and configure:**
-   ```bash
-   git clone https://github.com/madebygps/second-brain-ocr.git
-   cd second-brain-ocr
-   cp .env.example .env
-   # Edit .env with your Azure credentials
-   ```
+```bash
+git clone https://github.com/madebygps/second-brain-ocr.git
+cd second-brain-ocr
+cp .env.example .env
+# Edit .env with Azure credentials
+```
 
-2. **Update volume paths in `docker-compose.yml`:**
-   ```yaml
-   volumes:
-     - /path/to/your/brain-notes:/brain-notes:ro
-     - ./data:/app/data
-   ```
+Update volume paths in `docker-compose.yml`:
+```yaml
+volumes:
+  - /path/to/your/brain-notes:/brain-notes:ro
+  - ./data:/app/data
+```
 
-3. **Start the service:**
-   ```bash
-   docker-compose up -d
-   docker-compose logs -f
-   ```
+Start the service:
+```bash
+docker-compose up -d
+docker-compose logs -f
+```
 
-### Directory Structure
+### Portainer Deployment
 
-Organize your notes like this:
+Images are automatically built and pushed to ACR on every commit to main. See [CI/CD setup guide](docs/CICD_SETUP.md) and [ACR deployment guide](ACR_DEPLOYMENT.md).
+
+## Directory Structure
+
+Organize notes with this structure:
 ```
 brain-notes/
 ├── books/
-│   └── win-every-argument/
+│   └── atomic-habits/
 │       ├── page1.jpg
 │       └── page2.jpg
 ├── articles/
-│   └── productivity-article/
+│   └── productivity-tips/
 └── essays/
     └── philosophy-notes/
 ```
 
-The app automatically extracts:
-- **Category**: `books`, `articles`, `essays`
-- **Source**: Folder name (e.g., `win-every-argument`)
-- **Title**: Formatted from folder name (e.g., "Win Every Argument")
-
-## Development
-
-### Local Setup
-
-```bash
-# Install uv
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies
-uv sync
-
-# Run tests
-uv run pytest
-
-# Run linting
-uv run ruff check src tests
-
-# Type checking
-uv run mypy src
-
-# Start application
-uv run python -m second_brain_ocr.main
-```
-
-### Testing Search
-
-```bash
-# After processing some images, test search:
-python test_search.py
-```
+The app extracts metadata:
+- **Category**: Top-level folder (books, articles, essays)
+- **Source**: Subfolder name (atomic-habits)
+- **Title**: Formatted source name (Atomic Habits)
 
 ## Configuration
 
@@ -103,152 +76,131 @@ Key environment variables:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `WATCH_DIR` | Directory to monitor | `/brain-notes` |
-| `POLLING_INTERVAL` | Fallback polling interval (seconds) | `180` |
-| `AZURE_DOC_INTELLIGENCE_ENDPOINT` | OCR service endpoint | Required |
-| `AZURE_DOC_INTELLIGENCE_KEY` | OCR service key | Required |
-| `AZURE_OPENAI_ENDPOINT` | OpenAI service endpoint | Required |
-| `AZURE_OPENAI_KEY` | OpenAI service key | Required |
-| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Embedding model name | `text-embedding-ada-002` |
-| `AZURE_SEARCH_ENDPOINT` | Search service endpoint | Required |
-| `AZURE_SEARCH_KEY` | Search service key | Required |
+| `POLLING_INTERVAL` | Polling interval in seconds | `180` |
+| `AZURE_DOC_INTELLIGENCE_ENDPOINT` | OCR endpoint | Required |
+| `AZURE_DOC_INTELLIGENCE_KEY` | OCR key | Required |
+| `AZURE_OPENAI_ENDPOINT` | OpenAI endpoint | Required |
+| `AZURE_OPENAI_KEY` | OpenAI key | Required |
+| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Model deployment name | `text-embedding-ada-002` |
+| `AZURE_SEARCH_ENDPOINT` | Search endpoint | Required |
+| `AZURE_SEARCH_KEY` | Search key | Required |
 | `STATE_FILE` | Processed files tracker | `/app/data/processed_files.json` |
 
-See `.env.example` for complete configuration template.
-
-## Deployment Options
-
-### Synology NAS with Portainer
-
-1. Build and push to Azure Container Registry:
-   ```bash
-   ./build-acr.sh yourregistry.azurecr.io
-   ```
-
-2. In Portainer:
-   - Add ACR as registry (Azure Portal > ACR > Access keys)
-   - Create stack from `docker-compose.acr.yml`
-   - Set environment variables
-   - Update Nextcloud volume path
-   - Deploy
-
-See [ACR_DEPLOYMENT.md](ACR_DEPLOYMENT.md) for detailed instructions.
-
-### Other Registries
-
-```bash
-# Docker Hub
-docker build -t username/second-brain-ocr:latest .
-docker push username/second-brain-ocr:latest
-
-# GitHub Container Registry
-docker build -t ghcr.io/username/second-brain-ocr:latest .
-docker push ghcr.io/username/second-brain-ocr:latest
-```
+See `.env.example` for all options.
 
 ## Usage
 
 ### Adding Notes
 
-1. Take photos of book pages/articles on your phone
-2. Let Nextcloud sync to `brain-notes/[category]/[source]/`
-3. Watch the logs as files are automatically processed
+1. Take photos of pages on your phone
+2. Sync to `brain-notes/[category]/[source]/` via Nextcloud or file sync
+3. Application automatically detects and processes new files
 
 ### Searching
 
-Use the provided search script:
+Test search after processing files:
 ```bash
-python test_search.py
-# Enter query: "what are the best public speaking tips?"
+uv run python test_search.py
 ```
 
-Or integrate programmatically:
+Programmatic search:
 ```python
-from second_brain_ocr.indexer import SearchIndexer
-from second_brain_ocr.embeddings import EmbeddingGenerator
+from src.second_brain_ocr.indexer import SearchIndexer
+from src.second_brain_ocr.embeddings import EmbeddingGenerator
 
-embedding_gen = EmbeddingGenerator(...)
-indexer = SearchIndexer(...)
+embedding_gen = EmbeddingGenerator(endpoint, api_key, deployment, api_version)
+indexer = SearchIndexer(endpoint, api_key, index_name, embedding_dimension)
 
-query = "public speaking tips"
-query_vector = embedding_gen.generate_embedding(query)
-results = indexer.search(query, query_vector, top=5)
+query_vector = embedding_gen.generate_embedding("public speaking tips")
+results = indexer.search("public speaking tips", query_vector, top=5)
 ```
 
-## CI/CD
+## Development
 
-The project includes GitHub Actions workflows for:
-- **Tests**: Pytest with coverage reporting
-- **Linting**: Ruff for code quality
-- **Type Checking**: mypy for type safety
-- **Docker Build**: Automated ACR image builds on push to main
+### Setup
 
-Configure secrets in GitHub:
-- `ACR_REGISTRY`
-- `ACR_USERNAME`
-- `ACR_PASSWORD`
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv sync
+```
+
+### Run Locally
+
+```bash
+uv run python -m src.second_brain_ocr.main
+```
+
+### Quality Checks
+
+```bash
+uv run pytest                     # Run tests
+uv run pytest --cov              # With coverage
+uv run ruff check src tests      # Lint
+uv run mypy src                  # Type check
+uv run pre-commit run --all-files # All hooks
+```
+
+See [local testing guide](LOCAL_TESTING.md) for details.
+
+### CI/CD
+
+GitHub Actions runs on every push:
+- Tests (36 tests, 86% coverage)
+- Linting (ruff)
+- Type checking (mypy)
+- Docker build and push to ACR (main branch only)
+
+Setup instructions: [docs/CICD_SETUP.md](docs/CICD_SETUP.md)
+
+Required secrets:
+- `ACR_REGISTRY`, `ACR_USERNAME`, `ACR_PASSWORD`
 - `CODECOV_TOKEN` (optional)
 
 ## Supported Formats
 
-- Images: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`
-- Documents: `.pdf`
+Images: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`
+Documents: `.pdf`
 
 ## Troubleshooting
 
-**Files reprocessed on restart?**
-- Ensure `/app/data` volume is mounted for state persistence
+**Files reprocessed on restart**
+- Mount `/app/data` volume for state persistence
 
-**OCR failing?**
-- Check Azure Document Intelligence quota
-- Verify image quality and readability
+**OCR failing**
+- Check Azure Document Intelligence quota and pricing tier
+- Verify image quality
 
-**Search returns no results?**
-- Confirm files were successfully indexed (check logs)
+**No search results**
+- Confirm files indexed successfully in logs
 - Verify Azure AI Search index exists
-- Try test_search.py for diagnostics
 
-**Network drive monitoring issues?**
-- App automatically falls back to polling mode
+**File watching issues on network drives**
+- Application automatically falls back to polling mode
 - Adjust `POLLING_INTERVAL` if needed
 
 ## Architecture
 
 ```
-┌─────────────┐
-│ Phone Photo │
-└──────┬──────┘
-       │ Nextcloud Sync
-       ▼
-┌────────────────┐
-│  File Watcher  │
-└───────┬────────┘
-        │
-        ▼
-┌──────────────────┐    ┌────────────────┐
-│ Azure Doc Intel  │───▶│  Text Content  │
-│      (OCR)       │    └───────┬────────┘
-└──────────────────┘            │
-                                ▼
-                      ┌──────────────────┐
-                      │   Azure OpenAI   │
-                      │   (Embeddings)   │
-                      └────────┬─────────┘
-                               │
-                               ▼
-                    ┌────────────────────┐
-                    │ Azure AI Search    │
-                    │  (Vector Store)    │
-                    └────────────────────┘
+Phone → Nextcloud → File Watcher → Azure Document Intelligence (OCR)
+                                  ↓
+                            Text Content
+                                  ↓
+                         Azure OpenAI (Embeddings)
+                                  ↓
+                         Azure AI Search (Vector Store)
 ```
+
+## Contributing
+
+Contributions welcome! Ensure tests pass before submitting PRs:
+```bash
+uv run pytest
+uv run ruff check src tests
+uv run mypy src
+```
+
+Pre-commit hooks run automatically after `uv run pre-commit install`.
 
 ## License
 
 MIT
-
-## Contributing
-
-Contributions welcome! Run tests before submitting PRs:
-```bash
-uv run pytest
-uv run ruff check src tests
-```
