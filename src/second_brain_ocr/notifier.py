@@ -81,12 +81,24 @@ class WebhookNotifier:
 
     def _send_webhook(self, payload: dict[str, Any]) -> None:
         try:
-            response = requests.post(
-                self.webhook_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=10,
-            )
+            # Check if this is a Discord webhook
+            if "discord.com" in self.webhook_url:
+                # Discord expects a 'content' field with the message text
+                discord_payload = {"content": payload.get("message", "")}
+                response = requests.post(
+                    self.webhook_url,
+                    json=discord_payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=10,
+                )
+            else:
+                # For other webhooks (ntfy.sh, Slack, etc.), send full payload
+                response = requests.post(
+                    self.webhook_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                    timeout=10,
+                )
             response.raise_for_status()
             logger.debug("Webhook sent successfully: %s", payload.get("event"))
         except requests.RequestException as e:

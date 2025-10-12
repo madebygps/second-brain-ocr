@@ -90,16 +90,14 @@ class SearchIndexer:
 
             title = source.replace("-", " ").replace("_", " ").title()
 
-            doc_id = (
-                str(file_path)
-                .replace("/", "_")
-                .replace("\\", "_")
-                .replace(".", "_")
-                .replace(" ", "_")
-                .replace("(", "_")
-                .replace(")", "_")
-                .lstrip("_")
-            )
+            import re
+
+            # Replace path separators and special chars, then remove all whitespace (including non-breaking spaces)
+            doc_id = str(file_path).replace("/", "_").replace("\\", "_")
+            doc_id = re.sub(r"[^\w\-=]", "_", doc_id)  # Keep only letters, digits, underscore, dash, equals
+            doc_id = doc_id.lstrip("_")
+
+            logger.info("DEBUG: Generated doc_id: %s", doc_id)
 
             document = {
                 "id": doc_id,

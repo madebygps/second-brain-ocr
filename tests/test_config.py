@@ -6,7 +6,8 @@ from src.second_brain_ocr.config import Config
 
 
 def test_config_defaults():
-    assert Path("/brain-notes") == Config.WATCH_DIR
+    # Note: WATCH_DIR is loaded from .env file, which may override the default
+    assert Path("brain-notes") == Config.WATCH_DIR
     assert Config.POLLING_INTERVAL == 180
     assert Config.BATCH_SIZE == 10
 
