@@ -95,10 +95,9 @@ Send notifications to a Discord channel:
 # 1. In Discord: Server Settings → Integrations → Webhooks → New Webhook
 # 2. Copy the webhook URL
 WEBHOOK_URL=https://discord.com/api/webhooks/123456789/abcdefghijklmnop
-
-# Customize message format (optional)
-# Add ?wait=true to get delivery confirmation
 ```
+
+Discord webhooks are automatically detected and formatted. The application sends only the message text to Discord's `content` field, ensuring clean notifications.
 
 **Pros:** Rich formatting, permanent history, team access
 **Cons:** Requires Discord server
@@ -152,11 +151,11 @@ def webhook():
     event = data.get('event')
 
     if event == 'file_processed':
-        print(f"✅ Processed: {data['file']['name']} ({data['file']['word_count']} words)")
+        print(f"Processed: {data['file']['name']} ({data['file']['word_count']} words)")
     elif event == 'batch_complete':
-        print(f"🎉 Batch done: {data['summary']['files_processed']} files")
+        print(f"Batch done: {data['summary']['files_processed']} files")
     elif event == 'processing_error':
-        print(f"❌ Error: {data['file']['name']}")
+        print(f"Error: {data['file']['name']}")
 
     return {'status': 'ok'}, 200
 

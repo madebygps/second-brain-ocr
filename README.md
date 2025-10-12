@@ -9,10 +9,10 @@ Automated OCR and semantic search for your second brain notes. Watches directori
 - Automated file watching with event-based monitoring and polling fallback
 - OCR text extraction from images and PDFs
 - Vector embeddings for semantic search
-- State management to prevent reprocessing
+- State management with unicode normalization to prevent reprocessing
 - Docker-first deployment for Synology NAS or any Docker host
 - CI/CD pipeline with automated testing and ACR deployment
-- Optional webhook notifications for file processing events
+- Webhook notifications for Discord, Slack, ntfy.sh, and custom endpoints
 
 ## Prerequisites
 
@@ -155,7 +155,7 @@ See [local testing guide](LOCAL_TESTING.md) for details.
 ### CI/CD
 
 GitHub Actions runs on every push:
-- Tests (36 tests, 86% coverage)
+- Tests (38 tests, 72% coverage)
 - Linting (ruff)
 - Type checking (mypy)
 - Docker build and push to ACR (main branch only)

@@ -117,7 +117,7 @@ export WATCH_DIR=$(pwd)/brain-notes
 export STATE_FILE=$(pwd)/data/processed_files.json
 
 # Run the application
-uv run python -m second_brain_ocr.main
+uv run python -m src.second_brain_ocr.main
 ```
 
 ### Option B: Using Docker Compose (Recommended for testing)
