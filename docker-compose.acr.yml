@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  second-brain-ocr:
+    # Replace with your actual ACR image
+    image: yourregistryname.azurecr.io/second-brain-ocr:latest
+
+    container_name: second-brain-ocr
+    restart: unless-stopped
+
+    environment:
+      # Directory to watch (inside container)
+      - WATCH_DIR=/brain-notes
+
+      # Polling interval in seconds (fallback if event watching fails)
+      - POLLING_INTERVAL=180
+
+      # Azure Document Intelligence
+      - AZURE_DOC_INTELLIGENCE_ENDPOINT=${AZURE_DOC_INTELLIGENCE_ENDPOINT}
+      - AZURE_DOC_INTELLIGENCE_KEY=${AZURE_DOC_INTELLIGENCE_KEY}
+
+      # Azure OpenAI
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_KEY=${AZURE_OPENAI_KEY}
+      - AZURE_OPENAI_EMBEDDING_DEPLOYMENT=${AZURE_OPENAI_EMBEDDING_DEPLOYMENT:-text-embedding-ada-002}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-02-01}
+
+      # Azure AI Search
+      - AZURE_SEARCH_ENDPOINT=${AZURE_SEARCH_ENDPOINT}
+      - AZURE_SEARCH_KEY=${AZURE_SEARCH_KEY}
+      - AZURE_SEARCH_INDEX_NAME=${AZURE_SEARCH_INDEX_NAME:-second-brain-notes}
+
+      # Processing options
+      - BATCH_SIZE=${BATCH_SIZE:-10}
+
+      # State file location
+      - STATE_FILE=/app/data/processed_files.json
+
+    volumes:
+      # Mount your Nextcloud brain-notes directory
+      # Adjust the path on the left side to match your Synology path
+      # Example: /volume1/nextcloud/data/username/files/brain-notes:/brain-notes:ro
+      - /volume1/nextcloud/data/YOUR_USER/files/brain-notes:/brain-notes:ro
+
+      # Persistent storage for application state
+      # This should be a persistent location on your Synology
+      - /volume1/docker/second-brain-ocr/data:/app/data
+
+    # Optional: If you need to configure logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
