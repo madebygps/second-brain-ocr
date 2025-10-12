@@ -6,9 +6,9 @@ Automated OCR and semantic search for your second brain notes. Watches directori
 
 ## Features
 
-- Automated file watching with event-based monitoring and polling fallback
-- OCR text extraction from images and PDFs
-- Vector embeddings for semantic search
+- Reliable file watching with polling mode (detects files every 60-180 seconds)
+- OCR text extraction from images and PDFs using Azure Document Intelligence
+- Vector embeddings for semantic search using Azure OpenAI
 - State management with unicode normalization to prevent reprocessing
 - Docker-first deployment for Synology NAS or any Docker host
 - CI/CD pipeline with automated testing and ACR deployment
@@ -71,11 +71,46 @@ The app extracts metadata:
 
 ## Configuration
 
-Key environment variables:
+### File Watching Strategy
+
+This application uses **polling mode by default** (checks directory every 60-180 seconds) for reliable file detection.
+
+**Why polling?**
+- Works reliably with Nextcloud web uploads (which use atomic writes with temporary `.part` files)
+- Compatible with all filesystem types including network shares (NFS/CIFS)
+- Simpler and more reliable than event-based watching
+- 60-180 second delay is acceptable for batch document processing
+
+**When to use event-based mode (inotify):**
+
+If you're **NOT using Nextcloud web uploads** and adding files directly to the filesystem (SMB share, SSH, File Station), you can enable instant detection:
+
+```yaml
+environment:
+  - USE_POLLING=false  # Enable event-based watching for instant detection
+```
+
+Event-based mode detects files within 1-2 seconds but:
+- May not detect Nextcloud web uploads (atomic rename pattern)
+- Requires sufficient inotify watch limits on host system
+- Only works with local filesystems (not NFS/CIFS)
+
+**Adjusting polling interval:**
+
+```yaml
+environment:
+  - USE_POLLING=true          # Default
+  - POLLING_INTERVAL=60       # Fast: 1 minute
+  - POLLING_INTERVAL=180      # Default: 3 minutes
+  - POLLING_INTERVAL=300      # Conservative: 5 minutes
+```
+
+### Environment Variables
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `WATCH_DIR` | Directory to monitor | `/brain-notes` |
+| `USE_POLLING` | Use polling mode (vs event-based) | `true` |
 | `POLLING_INTERVAL` | Polling interval in seconds | `180` |
 | `AZURE_DOC_INTELLIGENCE_ENDPOINT` | OCR endpoint | Required |
 | `AZURE_DOC_INTELLIGENCE_KEY` | OCR key | Required |
@@ -182,9 +217,11 @@ Documents: `.pdf`
 - Confirm files indexed successfully in logs
 - Verify Azure AI Search index exists
 
-**File watching issues on network drives**
-- Application automatically falls back to polling mode
-- Adjust `POLLING_INTERVAL` if needed
+**Files not being detected**
+- Polling mode checks every 60-180 seconds by default
+- For instant detection, use `USE_POLLING=false` (only for direct file additions, not Nextcloud web uploads)
+- Check container logs to see when next scan occurs
+- Verify files are in correct directory structure
 
 ## Architecture
 

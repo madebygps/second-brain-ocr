@@ -66,7 +66,8 @@ services:
 
     environment:
       - WATCH_DIR=/brain-notes
-      - POLLING_INTERVAL=180
+      - USE_POLLING=true
+      - POLLING_INTERVAL=60
       - AZURE_DOC_INTELLIGENCE_ENDPOINT=${AZURE_DOC_INTELLIGENCE_ENDPOINT}
       - AZURE_DOC_INTELLIGENCE_KEY=${AZURE_DOC_INTELLIGENCE_KEY}
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
@@ -124,12 +125,26 @@ Check the logs:
 2. Go to **Logs** tab
 3. Look for:
 ```
-Initializing Second Brain OCR...
-Index 'second-brain-notes' created/updated successfully
-Initialization complete
-Scanning for existing unprocessed files...
+============================================================
+Second Brain OCR - Starting
+============================================================
+✓ Webhook notifications enabled
+✓ Using embedding dimension: 3072
+✓ Search index ready: second-brain-notes
+✓ Initialization complete
+============================================================
+
+Scanning for unprocessed files...
+✓ No unprocessed files found
+
 Starting file watcher...
-Second Brain OCR is now running.
+Watching: /brain-notes
+Polling interval: 60 seconds (~1 minutes)
+Reason: Reliable detection of Nextcloud web uploads (atomic writes)
+File watcher started in polling mode, watching: /brain-notes
+============================================================
+✓ Ready - Monitoring for new files
+============================================================
 ```
 
 ## Step 8: Test the System
@@ -137,17 +152,20 @@ Second Brain OCR is now running.
 1. Upload an image to Nextcloud:
    - Path: `brain-notes/books/test-book/page1.jpg`
 2. Wait for Nextcloud to sync to Synology
-3. Check container logs for processing messages
-4. If webhook is configured, check for notification
+3. Wait up to 60 seconds for polling cycle to detect the file
+4. Check container logs for processing messages
+5. If webhook is configured, check for notification
 
 Expected log output:
 ```
-New file detected: /brain-notes/books/test-book/page1.jpg
-Processing new file: /brain-notes/books/test-book/page1.jpg
-[1/3] Extracting text from page1.jpg
-[2/3] Generating embedding for page1.jpg
-[3/3] Indexing document: page1.jpg
-Successfully processed: page1.jpg
+→ Processing: page1.jpg
+  [1/3] Extracting text...
+  ✓ Extracted 360 words
+  [2/3] Generating embedding...
+  ✓ Embedding generated
+  [3/3] Indexing document...
+  ✓ Successfully indexed
+✓ Completed: page1.jpg (360 words)
 ```
 
 ## Updating the Application
@@ -176,9 +194,11 @@ Or manually pull and recreate:
 - Verify ACR credentials are correct
 
 **Files not being detected:**
+- Wait up to 60 seconds for polling cycle (check logs for "Polling interval" message)
 - Verify volume path: `/volume1/nextcloud/data/YOUR_USERNAME/files/brain-notes`
 - Check file permissions: `ls -la /volume1/nextcloud/data/YOUR_USERNAME/files/brain-notes`
 - Ensure Nextcloud sync is working
+- For instant detection of direct file additions (not Nextcloud web uploads), set `USE_POLLING=false`
 
 **"Configuration errors" in logs:**
 - Check that all required Azure credentials are set

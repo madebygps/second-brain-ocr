@@ -12,10 +12,10 @@ services:
       # Directory to watch (inside container)
       - WATCH_DIR=/brain-notes
 
-      # Use polling mode (more reliable for Docker/network mounts)
+      # File watching mode
+      # USE_POLLING=true: Checks directory every N seconds (reliable, works with Nextcloud web uploads)
+      # USE_POLLING=false: Event-based watching (instant, only for direct file additions - not Nextcloud web)
       - USE_POLLING=true
-
-      # Polling interval in seconds
       - POLLING_INTERVAL=60
 
       # Azure Document Intelligence
