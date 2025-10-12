@@ -30,12 +30,12 @@ def test_config_validation_missing_fields(monkeypatch):
 
 
 def test_config_validation_all_fields_present(monkeypatch):
-    monkeypatch.setenv("AZURE_DOC_INTELLIGENCE_ENDPOINT", "https://example.com")
-    monkeypatch.setenv("AZURE_DOC_INTELLIGENCE_KEY", "test-key")
-    monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://openai.example.com")
-    monkeypatch.setenv("AZURE_OPENAI_KEY", "test-key")
-    monkeypatch.setenv("AZURE_SEARCH_ENDPOINT", "https://search.example.com")
-    monkeypatch.setenv("AZURE_SEARCH_KEY", "test-key")
+    monkeypatch.setattr(Config, "AZURE_DOC_INTELLIGENCE_ENDPOINT", "https://example.com")
+    monkeypatch.setattr(Config, "AZURE_DOC_INTELLIGENCE_KEY", "test-key")
+    monkeypatch.setattr(Config, "AZURE_OPENAI_ENDPOINT", "https://openai.example.com")
+    monkeypatch.setattr(Config, "AZURE_OPENAI_KEY", "test-key")
+    monkeypatch.setattr(Config, "AZURE_SEARCH_ENDPOINT", "https://search.example.com")
+    monkeypatch.setattr(Config, "AZURE_SEARCH_KEY", "test-key")
 
     errors = Config.validate()
     assert errors == []
