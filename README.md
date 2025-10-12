@@ -1,7 +1,7 @@
 # Second Brain OCR
 
-![Tests](https://github.com/your-username/second-brain-ocr/workflows/CI%2FCD%20Pipeline/badge.svg)
-![Coverage](https://codecov.io/gh/your-username/second-brain-ocr/branch/main/graph/badge.svg)
+![CI/CD Pipeline](https://github.com/madebygps/second-brain-ocr/actions/workflows/ci-cd.yml/badge.svg)
+[![codecov](https://codecov.io/gh/madebygps/second-brain-ocr/branch/main/graph/badge.svg)](https://codecov.io/gh/madebygps/second-brain-ocr)
 
 Automated OCR and semantic search for your second brain notes. Captures text from images, generates embeddings, and enables intelligent search across your knowledge base.
 
@@ -26,7 +26,7 @@ Create these Azure resources ([detailed setup guide](docs/AZURE_SETUP.md)):
 
 1. **Clone and configure:**
    ```bash
-   git clone https://github.com/your-username/second-brain-ocr.git
+   git clone https://github.com/madebygps/second-brain-ocr.git
    cd second-brain-ocr
    cp .env.example .env
    # Edit .env with your Azure credentials
