@@ -90,7 +90,16 @@ class SearchIndexer:
 
             title = source.replace("-", " ").replace("_", " ").title()
 
-            doc_id = str(file_path).replace("/", "_").replace("\\", "_").replace(".", "_").lstrip("_")
+            doc_id = (
+                str(file_path)
+                .replace("/", "_")
+                .replace("\\", "_")
+                .replace(".", "_")
+                .replace(" ", "_")
+                .replace("(", "_")
+                .replace(")", "_")
+                .lstrip("_")
+            )
 
             document = {
                 "id": doc_id,
