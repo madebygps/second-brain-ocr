@@ -1,7 +1,6 @@
 # Second Brain OCR
 
 ![CI/CD Pipeline](https://github.com/madebygps/second-brain-ocr/actions/workflows/ci-cd.yml/badge.svg)
-[![codecov](https://codecov.io/gh/madebygps/second-brain-ocr/branch/main/graph/badge.svg)](https://codecov.io/gh/madebygps/second-brain-ocr)
 
 Automated OCR and semantic search for your second brain notes. Watches directories for images, extracts text with Azure Document Intelligence, generates embeddings with Azure OpenAI, and indexes in Azure AI Search for semantic retrieval.
 
@@ -152,9 +151,7 @@ GitHub Actions runs on every push:
 
 Setup instructions: [docs/CICD_SETUP.md](docs/CICD_SETUP.md)
 
-Required secrets:
-- `ACR_REGISTRY`, `ACR_USERNAME`, `ACR_PASSWORD`
-- `CODECOV_TOKEN` (optional)
+Required secrets: `ACR_REGISTRY`, `ACR_USERNAME`, `ACR_PASSWORD`
 
 ## Supported Formats
 
