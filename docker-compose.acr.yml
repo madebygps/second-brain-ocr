@@ -36,6 +36,9 @@ services:
       # State file location
       - STATE_FILE=/app/data/processed_files.json
 
+      # Webhook notifications (optional)
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+
     volumes:
       # Mount your Nextcloud brain-notes directory
       # Adjust the path on the left side to match your Synology path
