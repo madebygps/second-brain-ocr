@@ -1,7 +1,7 @@
 """Webhook notification system for file processing events."""
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -30,7 +30,7 @@ class WebhookNotifier:
 
         payload = {
             "event": "file_processed",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "file": {
                 "name": file_path.name,
                 "path": str(file_path),
@@ -52,7 +52,7 @@ class WebhookNotifier:
 
         payload = {
             "event": "batch_complete",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "summary": {
                 "files_processed": files_processed,
                 "duration_seconds": round(total_time_seconds, 2),
@@ -68,7 +68,7 @@ class WebhookNotifier:
 
         payload = {
             "event": "processing_error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "file": {
                 "name": file_path.name,
                 "path": str(file_path),

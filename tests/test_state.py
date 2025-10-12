@@ -74,3 +74,23 @@ def test_corrupted_state_file_handled(temp_state_file):
 
     manager = StateManager(temp_state_file)
     assert len(manager.processed_files) == 0
+
+
+def test_unicode_whitespace_normalization(temp_state_file):
+    """Test that unicode whitespace characters are normalized."""
+    manager = StateManager(temp_state_file)
+
+    # Non-breaking space (\u202f) and regular space should be treated the same
+    path_with_nbsp = "/test/file\u202fwith\u202fspaces.jpg"
+    path_with_regular_space = "/test/file with spaces.jpg"
+
+    # Mark file with non-breaking space
+    manager.mark_processed(path_with_nbsp)
+
+    # Should be found with regular spaces (normalized)
+    assert manager.is_processed(path_with_regular_space)
+
+    # And vice versa
+    manager2 = StateManager(temp_state_file)
+    manager2.mark_processed(path_with_regular_space)
+    assert manager2.is_processed(path_with_nbsp)

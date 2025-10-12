@@ -97,8 +97,6 @@ class SearchIndexer:
             doc_id = re.sub(r"[^\w\-=]", "_", doc_id)  # Keep only letters, digits, underscore, dash, equals
             doc_id = doc_id.lstrip("_")
 
-            logger.info("DEBUG: Generated doc_id: %s", doc_id)
-
             document = {
                 "id": doc_id,
                 "content": content,
