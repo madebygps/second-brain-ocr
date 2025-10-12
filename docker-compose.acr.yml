@@ -12,8 +12,11 @@ services:
       # Directory to watch (inside container)
       - WATCH_DIR=/brain-notes
 
-      # Polling interval in seconds (fallback if event watching fails)
-      - POLLING_INTERVAL=180
+      # Use polling mode (more reliable for Docker/network mounts)
+      - USE_POLLING=true
+
+      # Polling interval in seconds
+      - POLLING_INTERVAL=60
 
       # Azure Document Intelligence
       - AZURE_DOC_INTELLIGENCE_ENDPOINT=${AZURE_DOC_INTELLIGENCE_ENDPOINT}
