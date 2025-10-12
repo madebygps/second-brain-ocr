@@ -189,6 +189,7 @@ class SecondBrainOCR:
             callback=self.process_file,
             supported_extensions=Config.SUPPORTED_IMAGE_EXTENSIONS,
             polling_interval=Config.POLLING_INTERVAL,
+            use_polling=Config.USE_POLLING,
         )
 
         self.watcher.start()
