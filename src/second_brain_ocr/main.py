@@ -9,6 +9,7 @@ from pathlib import Path
 from .config import Config
 from .embeddings import EmbeddingGenerator
 from .indexer import SearchIndexer
+from .notifier import WebhookNotifier
 from .ocr import OCRProcessor
 from .state import StateManager
 from .watcher import FileWatcher, scan_existing_files
@@ -30,6 +31,10 @@ class SecondBrainOCR:
         self.watcher: FileWatcher | None = None
 
         logger.info("Initializing Second Brain OCR...")
+
+        self.notifier = WebhookNotifier(Config.WEBHOOK_URL)
+        if self.notifier.enabled:
+            logger.info("Webhook notifications enabled")
 
         errors = Config.validate()
         if errors:
@@ -106,11 +111,25 @@ class SecondBrainOCR:
             if success:
                 self.state_manager.mark_processed(str(file_path))
                 logger.info("Successfully processed: %s", file_path.name)
+
+                parts = file_path.parts
+                category = parts[-3] if len(parts) >= 3 else ""
+                source = parts[-2] if len(parts) >= 2 else ""
+                title = " ".join(word.capitalize() for word in source.replace("-", " ").replace("_", " ").split())
+
+                self.notifier.notify_file_processed(
+                    file_path=file_path,
+                    word_count=word_count,
+                    category=category,
+                    source=source,
+                    title=title,
+                )
             else:
                 logger.error("Failed to index: %s", file_path.name)
 
         except (OSError, ValueError, AttributeError) as e:
             logger.error("Error processing file %s: %s", file_path, e, exc_info=True)
+            self.notifier.notify_error(file_path, str(e))
 
     def process_existing_files(self) -> None:
         logger.info("Scanning for existing unprocessed files...")
@@ -123,8 +142,17 @@ class SecondBrainOCR:
 
         if unprocessed_files:
             logger.info("Found %d unprocessed files", len(unprocessed_files))
+            start_time = time.time()
+            processed_count = 0
+
             for file_path in unprocessed_files:
                 self.process_file(file_path)
+                if self.state_manager.is_processed(str(file_path)):
+                    processed_count += 1
+
+            elapsed_time = time.time() - start_time
+            if processed_count > 0:
+                self.notifier.notify_batch_complete(processed_count, elapsed_time)
         else:
             logger.info("No unprocessed files found")
 

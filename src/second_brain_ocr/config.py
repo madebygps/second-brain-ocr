@@ -38,6 +38,8 @@ class Config:
 
     STATE_FILE: Path = Path(os.getenv("STATE_FILE", "/app/data/processed_files.json"))
 
+    WEBHOOK_URL: str = os.getenv("WEBHOOK_URL", "")
+
     @classmethod
     def validate(cls) -> list[str]:
         """Validate required configuration values."""

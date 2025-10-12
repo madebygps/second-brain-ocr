@@ -12,6 +12,7 @@ Automated OCR and semantic search for your second brain notes. Watches directori
 - State management to prevent reprocessing
 - Docker-first deployment for Synology NAS or any Docker host
 - CI/CD pipeline with automated testing and ACR deployment
+- Optional webhook notifications for file processing events
 
 ## Prerequisites
 
@@ -84,8 +85,18 @@ Key environment variables:
 | `AZURE_SEARCH_ENDPOINT` | Search endpoint | Required |
 | `AZURE_SEARCH_KEY` | Search key | Required |
 | `STATE_FILE` | Processed files tracker | `/app/data/processed_files.json` |
+| `WEBHOOK_URL` | Notification webhook URL | None (disabled) |
 
 See `.env.example` for all options.
+
+## Notifications
+
+Get notified when files are processed! Configure a `WEBHOOK_URL` to receive notifications via:
+- **ntfy.sh** - Instant push notifications (no account needed)
+- **Discord/Slack** - Team notifications
+- **IFTTT/Zapier** - Connect to any service
+
+See [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) for setup instructions.
 
 ## Usage
 
