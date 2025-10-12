@@ -210,3 +210,6 @@ __marimo__/
 data/
 brain-notes/
 .DS_Store
+
+# Claude Code
+.claude/
