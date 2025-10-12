@@ -46,7 +46,7 @@ class FileWatcher:
         callback: Callable[[Path], None],
         supported_extensions: tuple[str, ...],
         polling_interval: int = 180,
-        use_polling: bool = False,
+        use_polling: bool = True,
     ) -> None:
         self.watch_path = watch_path
         self.callback = callback
@@ -63,14 +63,22 @@ class FileWatcher:
             self.watch_path.mkdir(parents=True, exist_ok=True)
 
         if self.use_polling:
-            logger.info("Starting polling observer (interval: %ds)", self.polling_interval)
+            logger.info("Starting polling observer")
+            logger.info(
+                "Polling interval: %d seconds (~%d minutes)", self.polling_interval, self.polling_interval // 60
+            )
+            logger.info("Reason: Reliable detection of Nextcloud web uploads (atomic writes)")
             self.observer = PollingObserver(timeout=self.polling_interval)
         else:
+            logger.info("Starting event-based observer (inotify)")
+            logger.warning(
+                "Note: Event-based mode may not detect Nextcloud web uploads. "
+                "Set USE_POLLING=true for reliable detection."
+            )
             try:
-                logger.info("Starting event-based observer")
                 self.observer = Observer()
             except Exception as e:
-                logger.warning("Failed to start event-based observer: %s", e)
+                logger.error("Failed to start event-based observer: %s", e)
                 logger.info("Falling back to polling observer (interval: %ds)", self.polling_interval)
                 self.observer = PollingObserver(timeout=self.polling_interval)
                 self.use_polling = True
@@ -78,7 +86,7 @@ class FileWatcher:
         self.observer.schedule(self.event_handler, str(self.watch_path), recursive=True)
         self.observer.start()
 
-        mode = "polling" if self.use_polling else "event-based"
+        mode = "polling" if self.use_polling else "event-based (inotify)"
         logger.info("File watcher started in %s mode, watching: %s", mode, self.watch_path)
 
     def stop(self) -> None:

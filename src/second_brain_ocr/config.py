@@ -12,7 +12,7 @@ class Config:
     """Application configuration loaded from environment variables."""
 
     WATCH_DIR: Path = Path(os.getenv("WATCH_DIR", "/brain-notes"))
-    USE_POLLING: bool = os.getenv("USE_POLLING", "false").lower() == "true"
+    USE_POLLING: bool = os.getenv("USE_POLLING", "true").lower() == "true"
     POLLING_INTERVAL: int = int(os.getenv("POLLING_INTERVAL", "180"))
 
     AZURE_DOC_INTELLIGENCE_ENDPOINT: str = os.getenv("AZURE_DOC_INTELLIGENCE_ENDPOINT", "")
