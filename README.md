@@ -2,273 +2,81 @@
 
 ![CI/CD Pipeline](https://github.com/madebygps/second-brain-ocr/actions/workflows/ci-cd.yml/badge.svg)
 
-Automated OCR and semantic search for your second brain notes. Watches directories for images, extracts text with Azure Document Intelligence, generates embeddings with Azure OpenAI, and indexes in Azure AI Search for semantic retrieval.
+Automated OCR and semantic search for second brain notes. Watches directories, extracts text with Azure Document Intelligence, generates embeddings with Azure OpenAI, and indexes in Azure AI Search.
 
-## Features
+**Features:** Polling file detection • OCR for images/PDFs • Vector embeddings • State management • Docker deployment • CI/CD • Webhook notifications
 
-- Reliable file watching with polling mode (detects files every 60-180 seconds)
-- OCR text extraction from images and PDFs using Azure Document Intelligence
-- Vector embeddings for semantic search using Azure OpenAI
-- State management with unicode normalization to prevent reprocessing
-- Docker-first deployment for Synology NAS or any Docker host
-- CI/CD pipeline with automated testing and ACR deployment
-- Webhook notifications for Discord, Slack, ntfy.sh, and custom endpoints
-
-## Prerequisites
-
-Azure resources required:
-- **Azure Document Intelligence** - OCR service
-- **Azure OpenAI** - Embedding model deployment (text-embedding-3-large or text-embedding-ada-002)
-- **Azure AI Search** - Free tier supports ~2,500 documents
+**Prerequisites:** Azure Document Intelligence, Azure OpenAI (embedding model), Azure AI Search (free tier: ~2,500 docs)
 
 ## Quick Start
-
-### Docker Deployment
 
 ```bash
 git clone https://github.com/madebygps/second-brain-ocr.git
 cd second-brain-ocr
-cp .env.example .env
-# Edit .env with Azure credentials
-```
-
-Update volume paths in `docker-compose.yml`:
-```yaml
-volumes:
-  - /path/to/your/brain-notes:/brain-notes:ro
-  - ./data:/app/data
-```
-
-Start the service:
-```bash
+cp .env.example .env  # Add Azure credentials
+# Edit docker-compose.yml volume paths
 docker-compose up -d
-docker-compose logs -f
 ```
 
-### Portainer Deployment
-
-Images are automatically built and pushed to ACR on every commit to main. See [CI/CD setup guide](docs/CICD_SETUP.md) and [ACR deployment guide](ACR_DEPLOYMENT.md).
+**Portainer:** Images auto-built to ACR on commits. See [CI/CD guide](docs/CICD_SETUP.md) and [ACR deployment](ACR_DEPLOYMENT.md).
 
 ## Directory Structure
 
-Organize notes with this structure:
 ```
 brain-notes/
-├── books/
-│   └── atomic-habits/
-│       ├── page1.jpg
-│       └── page2.jpg
-├── articles/
-│   └── productivity-tips/
-└── essays/
-    └── philosophy-notes/
+├── books/atomic-habits/page1.jpg
+├── articles/productivity-tips/
+└── essays/philosophy-notes/
 ```
 
-The app extracts metadata:
-- **Category**: Top-level folder (books, articles, essays)
-- **Source**: Subfolder name (atomic-habits)
-- **Title**: Formatted source name (Atomic Habits)
+**Metadata:** Category (top folder) • Source (subfolder) • Title (formatted source)
 
 ## Configuration
 
-### File Watching Strategy
+**File Detection:** Polling mode (default, every 180s) works with Nextcloud/network shares. Event-based mode (`USE_POLLING=false`) for instant detection with direct file access only.
 
-This application uses **polling mode by default** (checks directory every 60-180 seconds) for reliable file detection.
+**Key Variables:** `WATCH_DIR`, `USE_POLLING`, `POLLING_INTERVAL`, Azure endpoints/keys. See `.env.example`.
 
-**Why polling?**
-- Works reliably with Nextcloud web uploads (which use atomic writes with temporary `.part` files)
-- Compatible with all filesystem types including network shares (NFS/CIFS)
-- Simpler and more reliable than event-based watching
-- 60-180 second delay is acceptable for batch document processing
-
-**When to use event-based mode (inotify):**
-
-If you're **NOT using Nextcloud web uploads** and adding files directly to the filesystem (SMB share, SSH, File Station), you can enable instant detection:
-
-```yaml
-environment:
-  - USE_POLLING=false  # Enable event-based watching for instant detection
-```
-
-Event-based mode detects files within 1-2 seconds but:
-- May not detect Nextcloud web uploads (atomic rename pattern)
-- Requires sufficient inotify watch limits on host system
-- Only works with local filesystems (not NFS/CIFS)
-
-**Adjusting polling interval:**
-
-```yaml
-environment:
-  - USE_POLLING=true          # Default
-  - POLLING_INTERVAL=60       # Fast: 1 minute
-  - POLLING_INTERVAL=180      # Default: 3 minutes
-  - POLLING_INTERVAL=300      # Conservative: 5 minutes
-```
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `WATCH_DIR` | Directory to monitor | `/brain-notes` |
-| `USE_POLLING` | Use polling mode (vs event-based) | `true` |
-| `POLLING_INTERVAL` | Polling interval in seconds | `180` |
-| `AZURE_DOC_INTELLIGENCE_ENDPOINT` | OCR endpoint | Required |
-| `AZURE_DOC_INTELLIGENCE_KEY` | OCR key | Required |
-| `AZURE_OPENAI_ENDPOINT` | OpenAI endpoint | Required |
-| `AZURE_OPENAI_KEY` | OpenAI key | Required |
-| `AZURE_OPENAI_EMBEDDING_DEPLOYMENT` | Model deployment name | `text-embedding-ada-002` |
-| `AZURE_SEARCH_ENDPOINT` | Search endpoint | Required |
-| `AZURE_SEARCH_KEY` | Search key | Required |
-| `STATE_FILE` | Processed files tracker | `/app/data/processed_files.json` |
-| `WEBHOOK_URL` | Notification webhook URL | None (disabled) |
-
-See `.env.example` for all options.
-
-## Notifications
-
-Get notified when files are processed! Configure a `WEBHOOK_URL` to receive notifications via:
-- **ntfy.sh** - Instant push notifications (no account needed)
-- **Discord/Slack** - Team notifications
-- **IFTTT/Zapier** - Connect to any service
-
-See [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) for setup instructions.
+**Notifications:** Configure `WEBHOOK_URL` for ntfy.sh, Discord, Slack, IFTTT. See [NOTIFICATIONS.md](docs/NOTIFICATIONS.md).
 
 ## Usage
 
-### Adding Notes
+**Add notes:** Photo → Sync to `brain-notes/[category]/[source]/` → Auto-processed
 
-1. Take photos of pages on your phone
-2. Sync to `brain-notes/[category]/[source]/` via Nextcloud or file sync
-3. Application automatically detects and processes new files
-
-### Searching
-
-Test search after processing files:
-```bash
-uv run python scripts/test_search.py
-```
-
-Programmatic search:
-```python
-from src.second_brain_ocr.indexer import SearchIndexer
-from src.second_brain_ocr.embeddings import EmbeddingGenerator
-
-embedding_gen = EmbeddingGenerator(endpoint, api_key, deployment, api_version)
-indexer = SearchIndexer(endpoint, api_key, index_name, embedding_dimension)
-
-query_vector = embedding_gen.generate_embedding("public speaking tips")
-results = indexer.search("public speaking tips", query_vector, top=5)
-```
+**Search:** `uv run python scripts/test_search.py` or programmatically via `SearchIndexer`
 
 ## Development
 
-### Setup
-
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv sync
+curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync
+uv run python -m src.second_brain_ocr.main  # Run locally
+uv run pytest --cov                         # Test
+uv run ruff check src tests                 # Lint
+uv run pre-commit run --all-files           # All checks
 ```
 
-### Run Locally
+**CI/CD:** Auto-tests, linting, Docker build on push. See [CICD_SETUP.md](docs/CICD_SETUP.md).
 
-```bash
-uv run python -m src.second_brain_ocr.main
-```
-
-### Quality Checks
-
-```bash
-uv run pytest                     # Run tests
-uv run pytest --cov              # With coverage
-uv run ruff check src tests      # Lint
-uv run mypy src                  # Type check
-uv run pre-commit run --all-files # All hooks
-```
-
-See [local testing guide](LOCAL_TESTING.md) for details.
-
-### CI/CD
-
-GitHub Actions runs on every push:
-- Tests (38 tests, 72% coverage)
-- Linting (ruff)
-- Type checking (mypy)
-- Docker build and push to ACR (main branch only)
-
-Setup instructions: [docs/CICD_SETUP.md](docs/CICD_SETUP.md)
-
-Required secrets: `ACR_REGISTRY`, `ACR_USERNAME`, `ACR_PASSWORD`
-
-## Supported Formats
-
-Images: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`
-Documents: `.pdf`
+**Formats:** `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.pdf`
 
 ## Utilities
 
-### Check Index Statistics
-Monitor Azure AI Search storage usage and capacity:
 ```bash
-uv run python scripts/check_index_stats.py
-```
-
-Shows document count, storage usage, and remaining capacity for the free tier (25MB limit).
-
-### Clear Search Index
-Remove all documents from the search index:
-```bash
-uv run python scripts/clear_index.py
-```
-
-Useful for testing or resetting the index during development.
-
-### Test Search
-Test semantic search after processing files:
-```bash
-uv run python scripts/test_search.py
+uv run python scripts/check_index_stats.py  # Index stats
+uv run python scripts/clear_index.py        # Clear index
+uv run python scripts/test_search.py        # Test search
 ```
 
 ## Troubleshooting
 
-**Files reprocessed on restart**
-- Mount `/app/data` volume for state persistence
-
-**OCR failing**
-- Check Azure Document Intelligence quota and pricing tier
-- Verify image quality
-
-**No search results**
-- Confirm files indexed successfully in logs
-- Verify Azure AI Search index exists
-
-**Files not being detected**
-- Polling mode checks every 60-180 seconds by default
-- For instant detection, use `USE_POLLING=false` (only for direct file additions, not Nextcloud web uploads)
-- Check container logs to see when next scan occurs
-- Verify files are in correct directory structure
+- **Files reprocessed:** Mount `/app/data` volume
+- **OCR failing:** Check Azure quota/tier, image quality
+- **No results:** Check logs, verify index exists
+- **Not detecting:** Polling checks every 180s by default
 
 ## Architecture
 
-```
-Phone → Nextcloud → File Watcher → Azure Document Intelligence (OCR)
-                                  ↓
-                            Text Content
-                                  ↓
-                         Azure OpenAI (Embeddings)
-                                  ↓
-                         Azure AI Search (Vector Store)
-```
-
-## Contributing
-
-Contributions welcome! Ensure tests pass before submitting PRs:
-```bash
-uv run pytest
-uv run ruff check src tests
-uv run mypy src
-```
-
-Pre-commit hooks run automatically after `uv run pre-commit install`.
+Phone → Nextcloud → Watcher → Azure Doc Intelligence (OCR) → Azure OpenAI (Embeddings) → Azure AI Search (Vector Store)
 
 ## License
 
