@@ -18,7 +18,7 @@ cp .env.example .env  # Add Azure credentials
 docker-compose up -d
 ```
 
-**Portainer:** Images auto-built to ACR on commits. See [CI/CD guide](docs/CICD_SETUP.md) and [ACR deployment](ACR_DEPLOYMENT.md).
+**Portainer:** Images auto-built to ACR on commits.
 
 ## Directory Structure
 
@@ -37,7 +37,7 @@ brain-notes/
 
 **Key Variables:** `WATCH_DIR`, `USE_POLLING`, `POLLING_INTERVAL`, Azure endpoints/keys. See `.env.example`.
 
-**Notifications:** Configure `WEBHOOK_URL` for ntfy.sh, Discord, Slack, IFTTT. See [NOTIFICATIONS.md](docs/NOTIFICATIONS.md).
+**Notifications:** Configure `WEBHOOK_URL` for ntfy.sh, Discord, Slack, IFTTT, etc.
 
 ## Usage
 
@@ -55,7 +55,7 @@ uv run ruff check src tests                 # Lint
 uv run pre-commit run --all-files           # All checks
 ```
 
-**CI/CD:** Auto-tests, linting, Docker build on push. See [CICD_SETUP.md](docs/CICD_SETUP.md).
+**CI/CD:** Auto-tests, linting, Docker build on push.
 
 **Formats:** `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`, `.pdf`
 
