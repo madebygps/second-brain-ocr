@@ -145,7 +145,7 @@ See [docs/NOTIFICATIONS.md](docs/NOTIFICATIONS.md) for setup instructions.
 
 Test search after processing files:
 ```bash
-uv run python test_search.py
+uv run python scripts/test_search.py
 ```
 
 Programmatic search:
@@ -203,6 +203,30 @@ Required secrets: `ACR_REGISTRY`, `ACR_USERNAME`, `ACR_PASSWORD`
 
 Images: `.jpg`, `.jpeg`, `.png`, `.bmp`, `.tiff`
 Documents: `.pdf`
+
+## Utilities
+
+### Check Index Statistics
+Monitor Azure AI Search storage usage and capacity:
+```bash
+uv run python scripts/check_index_stats.py
+```
+
+Shows document count, storage usage, and remaining capacity for the free tier (25MB limit).
+
+### Clear Search Index
+Remove all documents from the search index:
+```bash
+uv run python scripts/clear_index.py
+```
+
+Useful for testing or resetting the index during development.
+
+### Test Search
+Test semantic search after processing files:
+```bash
+uv run python scripts/test_search.py
+```
 
 ## Troubleshooting
 

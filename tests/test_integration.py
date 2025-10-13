@@ -24,11 +24,11 @@ def mock_azure_services(monkeypatch, tmp_path):
     monkeypatch.setattr("src.second_brain_ocr.config.Config.WATCH_DIR", tmp_path / "brain-notes")
     monkeypatch.setattr("src.second_brain_ocr.config.Config.STATE_FILE", tmp_path / "state.json")
     monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_DOC_INTELLIGENCE_ENDPOINT", "https://test.com")
-    monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_DOC_INTELLIGENCE_KEY", "test-key")
+    monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_DOC_INTELLIGENCE_KEY", "test-key-12345")
     monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_OPENAI_ENDPOINT", "https://test.com")
-    monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_OPENAI_KEY", "test-key")
+    monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_OPENAI_KEY", "test-key-12345")
     monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_SEARCH_ENDPOINT", "https://test.com")
-    monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_SEARCH_KEY", "test-key")
+    monkeypatch.setattr("src.second_brain_ocr.config.Config.AZURE_SEARCH_KEY", "test-key-12345")
 
 
 @patch("src.second_brain_ocr.ocr.DocumentIntelligenceClient")
@@ -60,6 +60,11 @@ def test_full_pipeline_integration(
     with patch.object(SecondBrainOCR, "start", return_value=None):
         app = SecondBrainOCR()
 
+        # Reset mocks after initialization/health checks
+        mock_openai.return_value.embeddings.create.reset_mock()
+        mock_doc_intel.return_value.begin_analyze_document.reset_mock()
+        mock_search_client.return_value.upload_documents.reset_mock()
+
         test_file = temp_brain_notes / "books" / "test-book" / "page1.jpg"
         app.process_file(test_file)
 
@@ -84,6 +89,11 @@ def test_pipeline_handles_ocr_failure(
 
     with patch.object(SecondBrainOCR, "start", return_value=None):
         app = SecondBrainOCR()
+
+        # Reset mocks after initialization/health checks
+        mock_openai.return_value.embeddings.create.reset_mock()
+        mock_doc_intel.return_value.begin_analyze_document.reset_mock()
+        mock_search_client.return_value.upload_documents.reset_mock()
 
         test_file = temp_brain_notes / "books" / "test-book" / "page1.jpg"
         app.process_file(test_file)
@@ -134,6 +144,11 @@ def test_pipeline_skips_already_processed_files(
 
     with patch.object(SecondBrainOCR, "start", return_value=None):
         app = SecondBrainOCR()
+
+        # Reset mocks after initialization/health checks
+        mock_openai.return_value.embeddings.create.reset_mock()
+        mock_doc_intel.return_value.begin_analyze_document.reset_mock()
+        mock_search_client.return_value.upload_documents.reset_mock()
 
         test_file = temp_brain_notes / "books" / "test-book" / "page1.jpg"
         app.state_manager.mark_processed(str(test_file))

@@ -1,11 +1,18 @@
 """Azure AI Search indexer for storing and searching documents."""
 
-import logging
+import re
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import (
+    ClientAuthenticationError,
+    HttpResponseError,
+    ResourceNotFoundError,
+    ServiceRequestError,
+)
 from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import (
@@ -19,24 +26,231 @@ from azure.search.documents.indexes.models import (
     VectorSearchProfile,
 )
 
-logger = logging.getLogger(__name__)
+from .config import Config
+
+logger = Config.get_logger(__name__)
 
 
 class SearchIndexer:
-    """Manages document indexing in Azure AI Search."""
+    """Manages document indexing in Azure AI Search with robust error handling and retry mechanisms."""
 
-    def __init__(self, endpoint: str, api_key: str, index_name: str, embedding_dimension: int = 1536) -> None:
+    def __init__(
+        self,
+        endpoint: str,
+        api_key: str,
+        index_name: str,
+        embedding_dimension: int = 1536,
+        max_retries: int = 3,
+        base_delay: float = 1.0,
+        timeout: int = 30,
+    ) -> None:
+        """Initialize the search indexer with configuration and retry settings.
+
+        Args:
+            endpoint: Azure AI Search service endpoint
+            api_key: API key for authentication
+            index_name: Name of the search index
+            embedding_dimension: Dimension of embedding vectors (default: 1536)
+            max_retries: Maximum number of retry attempts for failed operations
+            base_delay: Base delay in seconds for exponential backoff
+            timeout: Request timeout in seconds
+        """
+        # Validate inputs
+        if not self._validate_config(endpoint, api_key, index_name, embedding_dimension):
+            raise ValueError("Invalid configuration parameters")
+
         self.endpoint = endpoint
         self.api_key = api_key
         self.index_name = index_name
         self.embedding_dimension = embedding_dimension
+        self.max_retries = max_retries
+        self.base_delay = base_delay
+        self.timeout = timeout
 
-        credential = AzureKeyCredential(api_key)
-        self.index_client = SearchIndexClient(endpoint=endpoint, credential=credential)
-        self.search_client = SearchClient(endpoint=endpoint, index_name=index_name, credential=credential)
+        # Performance tracking
+        self.operation_count = 0
+        self.error_count = 0
 
-    def create_or_update_index(self) -> None:
         try:
+            credential = AzureKeyCredential(api_key)
+            self.index_client = SearchIndexClient(endpoint=endpoint, credential=credential, timeout=timeout)
+            self.search_client = SearchClient(
+                endpoint=endpoint, index_name=index_name, credential=credential, timeout=timeout
+            )
+
+            logger.info(
+                "Search indexer initialized - endpoint: %s, index: %s, dimensions: %d",
+                endpoint,
+                index_name,
+                embedding_dimension,
+            )
+        except Exception as e:
+            logger.error("Failed to initialize search indexer: %s", e)
+            raise
+
+    def _validate_config(self, endpoint: str, api_key: str, index_name: str, embedding_dimension: int) -> bool:
+        """Validate configuration parameters.
+
+        Args:
+            endpoint: Azure AI Search service endpoint
+            api_key: API key for authentication
+            index_name: Name of the search index
+            embedding_dimension: Dimension of embedding vectors
+
+        Returns:
+            True if all parameters are valid, False otherwise
+        """
+        try:
+            # Validate endpoint
+            if not endpoint or not isinstance(endpoint, str):
+                logger.error("Invalid endpoint: must be a non-empty string")
+                return False
+
+            if not endpoint.startswith(("http://", "https://")):
+                logger.error("Invalid endpoint: must start with http:// or https://")
+                return False
+
+            # Validate API key
+            if not api_key or not isinstance(api_key, str):
+                logger.error("Invalid API key: must be a non-empty string")
+                return False
+
+            if len(api_key) < 10:  # Basic length check
+                logger.error("Invalid API key: too short")
+                return False
+
+            # Validate index name
+            if not index_name or not isinstance(index_name, str):
+                logger.error("Invalid index name: must be a non-empty string")
+                return False
+
+            # Azure Search index name constraints
+            if not re.match(r"^[a-z][a-z0-9\-]*$", index_name):
+                logger.error(
+                    "Invalid index name: must start with letter, contain only lowercase letters, numbers, and hyphens"
+                )
+                return False
+
+            if len(index_name) > 128:
+                logger.error("Invalid index name: too long (max 128 characters)")
+                return False
+
+            # Validate embedding dimension
+            if not isinstance(embedding_dimension, int) or embedding_dimension <= 0:
+                logger.error("Invalid embedding dimension: must be a positive integer")
+                return False
+
+            if embedding_dimension > 3072:  # Azure AI Search limit
+                logger.error("Invalid embedding dimension: exceeds maximum of 3072")
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.error("Error validating configuration: %s", e)
+            return False
+
+    def _execute_with_retry(self, operation, *args, **kwargs):
+        """Execute an operation with retry logic and exponential backoff.
+
+        Args:
+            operation: Function to execute
+            *args: Positional arguments for the operation
+            **kwargs: Keyword arguments for the operation
+
+        Returns:
+            Result of the operation or None if all retries failed
+        """
+        last_exception: Exception | None = None
+
+        for attempt in range(self.max_retries):
+            try:
+                self.operation_count += 1
+                start_time = time.time()
+
+                result = operation(*args, **kwargs)
+
+                duration = time.time() - start_time
+                logger.debug(
+                    "Operation %s completed in %.2fs (attempt %d/%d)",
+                    operation.__name__,
+                    duration,
+                    attempt + 1,
+                    self.max_retries,
+                )
+
+                return result
+
+            except (ServiceRequestError, HttpResponseError) as e:
+                last_exception = e
+                self.error_count += 1
+
+                # Check if error is retryable
+                status_code = getattr(e, "status_code", None)
+                if (
+                    status_code is not None
+                    and isinstance(status_code, int)
+                    and status_code < 500
+                    and status_code != 429
+                ):
+                    logger.error(
+                        "Non-retryable error in %s (attempt %d/%d): %s",
+                        operation.__name__,
+                        attempt + 1,
+                        self.max_retries,
+                        e,
+                    )
+                    break
+
+                # Log retry attempt
+                if attempt < self.max_retries - 1:
+                    delay = self.base_delay * (2**attempt)  # Exponential backoff
+                    logger.warning(
+                        "Retryable error in %s (attempt %d/%d): %s. Retrying in %.1fs...",
+                        operation.__name__,
+                        attempt + 1,
+                        self.max_retries,
+                        e,
+                        delay,
+                    )
+                    time.sleep(delay)
+                else:
+                    logger.error("Final attempt failed for %s: %s", operation.__name__, e)
+
+            except (ClientAuthenticationError, ValueError) as e:
+                # Non-retryable errors
+                last_exception = e
+                self.error_count += 1
+                logger.error("Non-retryable error in %s: %s", operation.__name__, e)
+                break
+
+            except Exception as e:
+                # Unexpected errors
+                last_exception = e
+                self.error_count += 1
+                logger.error(
+                    "Unexpected error in %s (attempt %d/%d): %s", operation.__name__, attempt + 1, self.max_retries, e
+                )
+                if attempt < self.max_retries - 1:
+                    delay = self.base_delay
+                    logger.info("Retrying in %.1fs...", delay)
+                    time.sleep(delay)
+
+        # All retries exhausted
+        if last_exception:
+            logger.error("All retry attempts exhausted for %s: %s", operation.__name__, last_exception)
+
+        return None
+
+    def create_or_update_index(self) -> bool:
+        """Create or update the search index with retry logic.
+
+        Returns:
+            True if index was created/updated successfully, False otherwise
+        """
+
+        def _create_index():
+            """Internal method to create/update index."""
             logger.info("Creating/updating search index: %s", self.index_name)
 
             vector_search = VectorSearch(
@@ -65,13 +279,23 @@ class SearchIndexer:
             ]
 
             index = SearchIndex(name=self.index_name, fields=fields, vector_search=vector_search)
+            return self.index_client.create_or_update_index(index)
 
-            self.index_client.create_or_update_index(index)
-            logger.info("Index '%s' created/updated successfully", self.index_name)
+        try:
+            start_time = time.time()
+            result = self._execute_with_retry(_create_index)
 
-        except (ValueError, AttributeError) as e:
-            logger.error("Error creating/updating index: %s", e)
-            raise
+            if result is not None:
+                duration = time.time() - start_time
+                logger.info("Index '%s' created/updated successfully in %.2fs", self.index_name, duration)
+                return True
+            else:
+                logger.error("Failed to create/update index after all retry attempts")
+                return False
+
+        except Exception as e:
+            logger.error("Unexpected error creating/updating index: %s", e)
+            return False
 
     def index_document(
         self, file_path: Path, content: str, embedding: list[float], metadata: dict | None = None
@@ -177,3 +401,91 @@ class SearchIndexer:
         except (ValueError, AttributeError) as e:
             logger.error("Error searching index: %s", e)
             return []
+
+    def health_check(self) -> bool:
+        """Perform a health check on the search service.
+
+        Returns:
+            True if service is healthy, False otherwise
+        """
+        try:
+            logger.info("Performing health check on search service")
+
+            # Test index client connection
+            indexes = list(self.index_client.list_indexes())
+
+            # Check if our index exists
+            index_exists = any(idx.name == self.index_name for idx in indexes)
+
+            if index_exists:
+                # Test search client with a simple query
+                list(self.search_client.search(search_text="*", top=1, select=["id"]))
+
+                logger.info("Health check passed: index '%s' exists and is searchable", self.index_name)
+                return True
+            else:
+                logger.warning("Health check warning: index '%s' does not exist", self.index_name)
+                return False
+
+        except Exception as e:
+            logger.error("Health check failed: %s", e)
+            return False
+
+    def get_index_stats(self) -> dict[str, Any]:
+        """Get statistics about the search index.
+
+        Returns:
+            Dictionary containing index statistics
+        """
+        try:
+            # Get document count
+            search_results = list(self.search_client.search(search_text="*", include_total_count=True, top=0))
+
+            doc_count = getattr(search_results, "get_count", lambda: 0)()
+
+            # Get index information
+            try:
+                index_info = self.index_client.get_index(self.index_name)
+                field_count = len(index_info.fields) if index_info.fields else 0
+            except ResourceNotFoundError:
+                field_count = 0
+
+            stats = {
+                "index_name": self.index_name,
+                "document_count": doc_count,
+                "field_count": field_count,
+                "embedding_dimension": self.embedding_dimension,
+                "operation_count": self.operation_count,
+                "error_count": self.error_count,
+                "error_rate": (self.error_count / max(self.operation_count, 1)) * 100,
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+            logger.info("Index stats retrieved: %d documents, %d fields", doc_count, field_count)
+            return stats
+
+        except Exception as e:
+            logger.error("Error retrieving index stats: %s", e)
+            return {
+                "index_name": self.index_name,
+                "error": str(e),
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
+
+    def get_indexer_info(self) -> dict[str, Any]:
+        """Get configuration information about the indexer.
+
+        Returns:
+            Dictionary containing indexer configuration
+        """
+        return {
+            "endpoint": self.endpoint,
+            "index_name": self.index_name,
+            "embedding_dimension": self.embedding_dimension,
+            "max_retries": self.max_retries,
+            "base_delay": self.base_delay,
+            "timeout": self.timeout,
+            "operation_count": self.operation_count,
+            "error_count": self.error_count,
+            "version": "enhanced",
+        }

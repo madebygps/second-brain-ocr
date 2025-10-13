@@ -12,6 +12,9 @@ select = [
     "C4",
     "SIM",
 ]
+ignore = [
+    "SIM117",  # Allow nested with statements in tests for readability
+]
 
 [format]
 quote-style = "double"
