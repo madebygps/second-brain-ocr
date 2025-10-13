@@ -113,15 +113,17 @@ uv sync --upgrade                         # Update deps
 
 ## CI/CD
 
-**Gates:** Linting (ruff) → Testing (pytest) → Docker build → ACR push (main only)
+**pre-commit.ci:** Auto-fixes PRs (trailing whitespace, formatting, linting) • Weekly dependency updates • Comment `pre-commit.ci run` to re-run
 
-**Flow:** Push → Tests pass → Docker build → ACR → Synology
+**GitHub Actions:** Tests → Docker build → ACR push (main only)
+
+**Flow:** PR → pre-commit.ci fixes → Tests pass → Merge → Build → Deploy
 
 ## Workflow
 
 **Setup:** `curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && uv run pre-commit install`
 
-**Changes:** Branch → Edit → Test → Lint → Format → PR
+**Changes:** Branch → Edit → Push → pre-commit.ci auto-fixes → Review → Merge
 
 **Checklist:** Uses Config • Has tests • Error handling • No hardcoded values • Clear commits
 

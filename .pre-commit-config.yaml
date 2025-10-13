@@ -1,3 +1,12 @@
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_schedule: weekly
+  skip: [pytest]  # Skip pytest in CI (runs in GitHub Actions instead)
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
