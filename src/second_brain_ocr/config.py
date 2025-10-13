@@ -82,6 +82,9 @@ class Config:
     TEXT_CHUNK_MAX_TOKENS: int = _get_int_in_range("TEXT_CHUNK_MAX_TOKENS", 8000, 1000, 32000)
     TEXT_CHUNK_OVERLAP: int = _get_int_in_range("TEXT_CHUNK_OVERLAP", 200, 50, 1000)
 
+    # Index Storage Optimization
+    MAX_CONTENT_LENGTH: int = _get_int_in_range("MAX_CONTENT_LENGTH", 1000, 100, 10000)  # chars to store in index
+
     # File Watcher Configuration
     FILE_DETECTION_DELAY: float = float(os.getenv("FILE_DETECTION_DELAY", "1.0"))
 
@@ -159,7 +162,11 @@ class Config:
             errors.append(path_error)
 
         # Validate embedding deployment name
-        valid_deployments = ["text-embedding-ada-002", "text-embedding-3-small", "text-embedding-3-large"]
+        valid_deployments = [
+            "text-embedding-ada-002",  # 1536 dims
+            "text-embedding-3-small",  # 384 dims (recommended for free tier)
+            "text-embedding-3-large",  # 3072 dims
+        ]
         if cls.AZURE_OPENAI_EMBEDDING_DEPLOYMENT not in valid_deployments:
             logger.warning(
                 "Unknown embedding deployment: %s. Supported: %s",

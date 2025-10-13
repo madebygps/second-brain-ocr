@@ -262,13 +262,9 @@ class SearchIndexer:
                 SimpleField(name="id", type=SearchFieldDataType.String, key=True, filterable=True),
                 SearchableField(name="content", type=SearchFieldDataType.String, searchable=True),
                 SearchableField(name="file_path", type=SearchFieldDataType.String, filterable=True, sortable=True),
-                SearchableField(name="file_name", type=SearchFieldDataType.String, filterable=True),
                 SimpleField(name="category", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SimpleField(name="source", type=SearchFieldDataType.String, filterable=True, facetable=True),
                 SearchableField(name="title", type=SearchFieldDataType.String, searchable=True, filterable=True),
-                SimpleField(name="created_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
-                SimpleField(name="indexed_at", type=SearchFieldDataType.DateTimeOffset, filterable=True, sortable=True),
-                SimpleField(name="word_count", type=SearchFieldDataType.Int32, filterable=True, sortable=True),
                 SearchField(
                     name="content_vector",
                     type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
@@ -321,17 +317,20 @@ class SearchIndexer:
             doc_id = re.sub(r"[^\w\-=]", "_", doc_id)  # Keep only letters, digits, underscore, dash, equals
             doc_id = doc_id.lstrip("_")
 
+            # Truncate content to save storage (vector search doesn't need full text)
+            from .config import Config
+
+            content_preview = (
+                content[: Config.MAX_CONTENT_LENGTH] if len(content) > Config.MAX_CONTENT_LENGTH else content
+            )
+
             document = {
                 "id": doc_id,
-                "content": content,
+                "content": content_preview,  # Store only preview
                 "file_path": str(file_path),
-                "file_name": file_path.name,
                 "category": category,
                 "source": source,
                 "title": title,
-                "created_at": datetime.now(UTC).isoformat(),
-                "indexed_at": datetime.now(UTC).isoformat(),
-                "word_count": len(content.split()),
                 "content_vector": embedding,
             }
 
@@ -362,7 +361,7 @@ class SearchIndexer:
         try:
             from azure.search.documents.models import VectorizedQuery
 
-            select_fields = ["file_name", "file_path", "content", "category", "source", "title", "created_at"]
+            select_fields = ["file_path", "content", "category", "source", "title"]
 
             if query_vector:
                 vector_query = VectorizedQuery(vector=query_vector, k_nearest_neighbors=top, fields="content_vector")
@@ -385,7 +384,6 @@ class SearchIndexer:
 
                 search_results.append(
                     {
-                        "file_name": result.get("file_name"),
                         "file_path": result.get("file_path"),
                         "content": content_str,
                         "category": result.get("category"),

@@ -2,14 +2,16 @@
 """Test script for searching indexed documents."""
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 from src.second_brain_ocr.embeddings import EmbeddingGenerator
 from src.second_brain_ocr.indexer import SearchIndexer
 
-# Load environment
-load_dotenv()
+# Load .env from repository root
+repo_root = Path(__file__).parent.parent
+load_dotenv(repo_root / ".env")
 
 print("=" * 60)
 print("Second Brain OCR - Search Test")

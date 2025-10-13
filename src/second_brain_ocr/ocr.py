@@ -226,7 +226,7 @@ class OCRProcessor:
             if not result:
                 return None
 
-            # Extract text and build metadata
+            # Extract text content
             extracted_text = result.content if result.content else ""
             processing_time = time.time() - start_time
 

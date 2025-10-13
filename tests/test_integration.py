@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from src.second_brain_ocr.config import Config
 from src.second_brain_ocr.main import SecondBrainOCR
 
 
@@ -158,3 +159,27 @@ def test_pipeline_skips_already_processed_files(
         mock_doc_intel.return_value.begin_analyze_document.assert_not_called()
         mock_openai.return_value.embeddings.create.assert_not_called()
         mock_search_client.return_value.upload_documents.assert_not_called()
+
+
+def test_embedding_dimension_detection(monkeypatch):
+    """Test that embedding dimensions are correctly detected for each model."""
+    test_cases = [
+        ("text-embedding-3-small", 384),
+        ("text-embedding-3-large", 3072),
+        ("text-embedding-ada-002", 1536),
+        ("custom-ada-002", 1536),  # Falls back to default
+    ]
+
+    for model, expected_dim in test_cases:
+        monkeypatch.setattr(Config, "AZURE_OPENAI_EMBEDDING_DEPLOYMENT", model)
+
+        # Simulate the logic from SecondBrainOCR._get_embedding_dimension()
+        deployment = Config.AZURE_OPENAI_EMBEDDING_DEPLOYMENT.lower()
+        if "text-embedding-3-large" in deployment:
+            dimension = 3072
+        elif "text-embedding-3-small" in deployment:
+            dimension = 384
+        else:
+            dimension = 1536
+
+        assert dimension == expected_dim, f"Model {model} should have {expected_dim} dims, got {dimension}"

@@ -169,7 +169,7 @@ class SecondBrainOCR:
         if "text-embedding-3-large" in deployment:
             dimension = 3072
         elif "text-embedding-3-small" in deployment:
-            dimension = 1536
+            dimension = 384  # Small model uses 384 dimensions
         else:
             dimension = 1536  # Default for ada-002
 

@@ -25,6 +25,15 @@ class EmbeddingGenerator:
         self.max_retries = 3
         self.base_delay = 1.0  # seconds
         self.max_text_length = 8000  # characters
+
+        # Set dimensions based on model
+        if "text-embedding-3-small" in deployment_name.lower():
+            self.dimensions = 384
+        elif "text-embedding-3-large" in deployment_name.lower():
+            self.dimensions = 3072
+        else:
+            self.dimensions = None  # ada-002 doesn't support dimensions parameter
+
         logger.info("Embedding generator initialized with deployment: %s", deployment_name)
 
     def _validate_text(self, text: str) -> bool:
@@ -70,7 +79,13 @@ class EmbeddingGenerator:
             try:
                 logger.debug("Embedding attempt %d/%d for text length %d", attempt, self.max_retries, len(text))
 
-                response = self.client.embeddings.create(model=self.deployment_name, input=text)
+                # Include dimensions parameter for text-embedding-3 models
+                if self.dimensions:
+                    response = self.client.embeddings.create(
+                        model=self.deployment_name, input=text, dimensions=self.dimensions
+                    )
+                else:
+                    response = self.client.embeddings.create(model=self.deployment_name, input=text)
 
                 embedding_data: list[float] = list(response.data[0].embedding)
 

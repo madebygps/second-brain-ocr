@@ -13,8 +13,9 @@ from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Load .env from repository root
+repo_root = Path(__file__).parent.parent
+load_dotenv(repo_root / ".env")
 
 AZURE_SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT", "")
 AZURE_SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY", "")
