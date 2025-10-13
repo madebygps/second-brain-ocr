@@ -33,26 +33,30 @@ def test_config_supported_extensions():
     assert expected == Config.SUPPORTED_IMAGE_EXTENSIONS
 
 
-def test_config_validation_missing_fields(monkeypatch):
+def test_config_validation_missing_fields(monkeypatch, tmp_path):
     monkeypatch.setattr(Config, "AZURE_DOC_INTELLIGENCE_ENDPOINT", "")
     monkeypatch.setattr(Config, "AZURE_DOC_INTELLIGENCE_KEY", "")
     monkeypatch.setattr(Config, "AZURE_OPENAI_ENDPOINT", "")
     monkeypatch.setattr(Config, "AZURE_OPENAI_KEY", "")
     monkeypatch.setattr(Config, "AZURE_SEARCH_ENDPOINT", "")
     monkeypatch.setattr(Config, "AZURE_SEARCH_KEY", "")
+    # Use tmp_path for STATE_FILE to avoid permission errors in CI
+    monkeypatch.setattr(Config, "STATE_FILE", tmp_path / "state.json")
 
     errors = Config.validate()
     assert len(errors) == 6
     assert "AZURE_DOC_INTELLIGENCE_ENDPOINT is required" in errors
 
 
-def test_config_validation_all_fields_present(monkeypatch):
+def test_config_validation_all_fields_present(monkeypatch, tmp_path):
     monkeypatch.setattr(Config, "AZURE_DOC_INTELLIGENCE_ENDPOINT", "https://example.com")
     monkeypatch.setattr(Config, "AZURE_DOC_INTELLIGENCE_KEY", "test-key")
     monkeypatch.setattr(Config, "AZURE_OPENAI_ENDPOINT", "https://openai.example.com")
     monkeypatch.setattr(Config, "AZURE_OPENAI_KEY", "test-key")
     monkeypatch.setattr(Config, "AZURE_SEARCH_ENDPOINT", "https://search.example.com")
     monkeypatch.setattr(Config, "AZURE_SEARCH_KEY", "test-key")
+    # Use tmp_path for STATE_FILE to avoid permission errors in CI
+    monkeypatch.setattr(Config, "STATE_FILE", tmp_path / "state.json")
 
     errors = Config.validate()
     assert errors == []
