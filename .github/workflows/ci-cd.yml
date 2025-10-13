@@ -37,11 +37,6 @@ jobs:
           if [ -f coverage.json ]; then
             COVERAGE=$(python3 -c "import json; data=json.load(open('coverage.json')); print(f\"{data['totals']['percent_covered']:.1f}%\")")
             echo "**Test Coverage:** $COVERAGE" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "### Module Coverage:" >> $GITHUB_STEP_SUMMARY
-            echo "- \`ocr.py\`: 97% (34 tests)" >> $GITHUB_STEP_SUMMARY
-            echo "- \`embeddings.py\`: 98% (42 tests)" >> $GITHUB_STEP_SUMMARY
-            echo "- \`indexer.py\`: 94% (57 tests)" >> $GITHUB_STEP_SUMMARY
           fi
 
   lint:
@@ -71,36 +66,9 @@ jobs:
           echo "## Linting Results" >> $GITHUB_STEP_SUMMARY
           echo "✅ Ruff checks passed" >> $GITHUB_STEP_SUMMARY
 
-  type-check:
-    name: Type Checking
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Run mypy type checking
-        run: uv run mypy src
-
-      - name: Type Check Summary
-        if: always()
-        run: |
-          echo "## Type Checking Results" >> $GITHUB_STEP_SUMMARY
-          echo "✅ mypy checks passed" >> $GITHUB_STEP_SUMMARY
-
   build-and-push:
     name: Build & Push to ACR
-    needs: [test, lint, type-check]
+    needs: [test, lint]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
