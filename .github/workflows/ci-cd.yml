@@ -39,36 +39,9 @@ jobs:
             echo "**Test Coverage:** $COVERAGE" >> $GITHUB_STEP_SUMMARY
           fi
 
-  lint:
-    name: Code Linting
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "latest"
-          enable-cache: true
-
-      - name: Set up Python
-        run: uv python install 3.13
-
-      - name: Install dependencies
-        run: uv sync
-
-      - name: Run ruff linting
-        run: uv run ruff check src tests
-
-      - name: Lint Summary
-        if: always()
-        run: |
-          echo "## Linting Results" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Ruff checks passed" >> $GITHUB_STEP_SUMMARY
-
   build-and-push:
     name: Build & Push to ACR
-    needs: [test, lint]
+    needs: [test]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:

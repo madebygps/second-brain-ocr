@@ -45,6 +45,7 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage.json
 *.cover
 *.py.cover
 .hypothesis/
@@ -209,6 +210,7 @@ __marimo__/
 # Second Brain OCR - Application Specific
 data/
 brain-notes/
+scripts/
 .DS_Store
 
 # Claude Code
